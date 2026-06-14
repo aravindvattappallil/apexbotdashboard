@@ -174,7 +174,7 @@ footer p span{color:var(--gold)}
   <span class="cfg-label">FIREBASE PROJECT ID</span>
   <input id="fbProjectId" type="text" placeholder="your-project-id" value="apex-bo" />
   <span class="cfg-label">API KEY</span>
-  <input id="fbApiKey" type="text" placeholder="AIza..." value="AIzaSyAlKDFYd6vGHrSg6AYWWtQKevkr1kZELdc" />
+  <input id="fbApiKey" type="text" placeholder="AIza..." />
   <button id="connectBtn" onclick="connectFirebase()">▶ CONNECT</button>
   <span id="cfgStatus" style="color:var(--muted)">Enter your Firebase credentials above</span>
 </div>
@@ -271,7 +271,7 @@ footer p span{color:var(--gold)}
 
 <script>
 // ── Firebase config (set via banner) ─────────────────────────────
-let PROJECT_ID = 'apex-bo';
+let PROJECT_ID = '';
 let API_KEY    = '';
 let POLL_MS    = 5000;
 let pollTimer  = null;
