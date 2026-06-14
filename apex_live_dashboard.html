@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX LIVE — Trading Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080B10;--surface:#0F1319;--card:#141920;--border:#1C2333;
+  --gold:#F0B429;--gold2:#8A6515;--gold3:rgba(240,180,41,0.08);
+  --green:#22C55E;--red:#EF4444;--blue:#38BDF8;
+  --text:#E2E8F0;--muted:#4B5A6E;--sub:#94A3B8;
+  --mono:'Space Mono',monospace;--sans:'Space Grotesk',sans-serif;
+}
+html{font-size:14px}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+
+/* Config Banner */
+#configBanner{
+  background:linear-gradient(90deg,rgba(240,180,41,0.15),transparent);
+  border-bottom:1px solid var(--gold2);
+  padding:10px 28px;
+  display:flex;align-items:center;gap:16px;
+  font-family:var(--mono);font-size:0.72rem;color:var(--gold);
+}
+#configBanner input{
+  background:rgba(0,0,0,0.4);border:1px solid var(--gold2);color:var(--gold);
+  font-family:var(--mono);font-size:0.72rem;padding:4px 10px;border-radius:4px;
+  outline:none;width:220px;
+}
+#configBanner input:focus{border-color:var(--gold)}
+#connectBtn{
+  background:var(--gold);color:#000;border:none;font-family:var(--mono);
+  font-size:0.72rem;font-weight:700;letter-spacing:0.08em;
+  padding:5px 16px;border-radius:4px;cursor:pointer;
+}
+#connectBtn:hover{background:#e0a820}
+.cfg-label{color:var(--muted)}
+
+/* Header */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 28px;border-bottom:1px solid var(--border);
+  background:var(--surface);position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-hex{
+  width:32px;height:32px;background:var(--gold);
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+}
+.logo-name{font-family:var(--mono);font-size:0.9rem;font-weight:700;letter-spacing:0.14em}
+.logo-name span{color:var(--gold)}
+.header-right{display:flex;align-items:center;gap:20px}
+.conn-status{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.conn-dot.live{background:var(--green);animation:blink 2s infinite}
+.conn-dot.error{background:var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+#lastSyncEl{font-family:var(--mono);font-size:0.65rem;color:var(--muted)}
+.price-ticker{font-family:var(--mono);font-size:0.8rem;color:var(--sub)}
+.price-ticker strong{color:var(--gold)}
+
+/* Main */
+main{padding:24px 28px;max-width:1440px;margin:0 auto}
+
+/* Section */
+.sec-label{
+  font-family:var(--mono);font-size:0.65rem;letter-spacing:0.18em;
+  color:var(--gold2);text-transform:uppercase;margin-bottom:12px;
+  display:flex;align-items:center;gap:10px;
+}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:24px}
+.kpi{
+  background:var(--card);border:1px solid var(--border);border-radius:7px;
+  padding:16px 14px 12px;transition:border-color 0.2s;
+}
+.kpi:hover{border-color:var(--gold2)}
+.kpi.accent{border-top:2px solid var(--gold)}
+.kpi-lbl{font-family:var(--mono);font-size:0.62rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:7px}
+.kpi-val{font-family:var(--mono);font-size:1.35rem;font-weight:700;line-height:1}
+.kpi-val.pos{color:var(--green)}.kpi-val.neg{color:var(--red)}.kpi-val.gold{color:var(--gold)}
+.kpi-sub{font-family:var(--mono);font-size:0.62rem;color:var(--muted);margin-top:4px}
+.kpi-sub.pos{color:var(--green)}.kpi-sub.neg{color:var(--red)}
+
+/* Charts */
+.charts-main{display:grid;grid-template-columns:2.2fr 1fr;gap:14px;margin-bottom:24px}
+.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:18px 18px 14px}
+.chart-head{
+  font-family:var(--mono);font-size:0.68rem;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.chart-head strong{color:var(--sub)}
+.chart-wrap{position:relative;height:190px}
+
+/* Open Positions */
+.pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px}
+.pos-card{
+  background:var(--card);border:1px solid var(--border);border-radius:7px;
+  padding:16px;position:relative;overflow:hidden;
+}
+.pos-card.buy-card{border-left:3px solid var(--green)}
+.pos-card.sell-card{border-left:3px solid var(--red)}
+.pos-type{
+  font-family:var(--mono);font-size:0.68rem;font-weight:700;letter-spacing:0.1em;
+  padding:2px 8px;border-radius:3px;display:inline-block;margin-bottom:10px;
+}
+.pos-type.buy{background:rgba(34,197,94,0.12);color:var(--green)}
+.pos-type.sell{background:rgba(239,68,68,0.12);color:var(--red)}
+.pos-pnl{font-family:var(--mono);font-size:1.4rem;font-weight:700;margin-bottom:6px}
+.pos-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-top:4px}
+.pos-row span{color:var(--sub)}
+.pos-empty{font-family:var(--mono);font-size:0.75rem;color:var(--muted);padding:24px;text-align:center;grid-column:1/-1}
+
+/* PnL bar on position card */
+.pos-bar-wrap{height:3px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden}
+.pos-bar{height:100%;border-radius:2px;transition:width 0.5s}
+.pos-bar.pos{background:var(--green)}.pos-bar.neg{background:var(--red)}
+
+/* Table */
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:28px}
+.table-head-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--border);
+}
+.table-head-row h3{font-family:var(--mono);font-size:0.68rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase}
+.table-head-row h3 strong{color:var(--sub)}
+.ftabs{display:flex;gap:4px}
+.ftab{
+  font-family:var(--mono);font-size:0.65rem;padding:3px 10px;
+  border-radius:4px;border:1px solid transparent;
+  background:transparent;color:var(--muted);cursor:pointer;letter-spacing:0.06em;transition:all 0.15s;
+}
+.ftab:hover,.ftab.active{background:var(--border);color:var(--sub)}
+.ftab.active{color:var(--gold);border-color:var(--gold2)}
+table{width:100%;border-collapse:collapse}
+thead tr{border-bottom:1px solid var(--border)}
+th{font-family:var(--mono);font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);padding:9px 18px;text-align:left;font-weight:400}
+td{font-family:var(--mono);font-size:0.75rem;padding:10px 18px;border-bottom:1px solid var(--border);color:var(--sub)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--gold3)}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:3px}
+.badge.buy{background:rgba(34,197,94,0.12);color:var(--green)}
+.badge.sell{background:rgba(239,68,68,0.12);color:var(--red)}
+.badge.open{background:rgba(240,180,41,0.12);color:var(--gold)}
+.ppos{color:var(--green)}.pneg{color:var(--red)}
+
+/* Footer */
+footer{padding:14px 28px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+footer p{font-family:var(--mono);font-size:0.62rem;color:var(--muted)}
+footer p span{color:var(--gold)}
+
+/* Skeleton pulse */
+@keyframes shimmer{0%{opacity:0.4}50%{opacity:0.8}100%{opacity:0.4}}
+.shimmer{animation:shimmer 1.6s infinite}
+
+/* Responsive */
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(4,1fr)}.charts-main{grid-template-columns:1fr}.charts-row{grid-template-columns:1fr 1fr}}
+@media(max-width:680px){main{padding:12px}.kpi-row{grid-template-columns:repeat(2,1fr)}.charts-row{grid-template-columns:1fr}header{padding:12px 16px}}
+</style>
+</head>
+<body>
+
+<!-- Config Banner -->
+<div id="configBanner">
+  <span class="cfg-label">FIREBASE PROJECT ID</span>
+  <input id="fbProjectId" type="text" placeholder="your-project-id" value="apex-bo" />
+  <span class="cfg-label">API KEY</span>
+  <input id="fbApiKey" type="text" placeholder="AIza..." value="AIzaSyAlKDFYd6vGHrSg6AYWWtQKevkr1kZELdc" />
+  <button id="connectBtn" onclick="connectFirebase()">▶ CONNECT</button>
+  <span id="cfgStatus" style="color:var(--muted)">Enter your Firebase credentials above</span>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-hex"></div>
+    <div class="logo-name">APEX <span>LIVE</span></div>
+  </div>
+  <div class="header-right">
+    <div class="price-ticker" id="priceTicker">XAUUSD — <strong>—</strong></div>
+    <div id="lastSyncEl">Last sync: —</div>
+    <div class="conn-status">
+      <div class="conn-dot" id="connDot"></div>
+      <span id="connLabel">DISCONNECTED</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- KPIs -->
+  <div class="sec-label">Account Overview</div>
+  <div class="kpi-row">
+    <div class="kpi accent"><div class="kpi-lbl">Balance</div><div class="kpi-val gold shimmer" id="kBal">—</div><div class="kpi-sub">account balance</div></div>
+    <div class="kpi accent"><div class="kpi-lbl">Equity</div><div class="kpi-val gold shimmer" id="kEq">—</div><div class="kpi-sub" id="kEqSub">—</div></div>
+    <div class="kpi"><div class="kpi-lbl">Floating P&L</div><div class="kpi-val shimmer" id="kFloat">—</div><div class="kpi-sub">open positions</div></div>
+    <div class="kpi"><div class="kpi-lbl">Net P&L (7d)</div><div class="kpi-val shimmer" id="kNetPnl">—</div><div class="kpi-sub" id="kNetPct">—</div></div>
+    <div class="kpi"><div class="kpi-lbl">Win Rate</div><div class="kpi-val gold shimmer" id="kWR">—</div><div class="kpi-sub" id="kWRSub">— W / — L</div></div>
+    <div class="kpi"><div class="kpi-lbl">Profit Factor</div><div class="kpi-val gold shimmer" id="kPF">—</div><div class="kpi-sub">gross P / gross L</div></div>
+    <div class="kpi"><div class="kpi-lbl">Free Margin</div><div class="kpi-val shimmer" id="kFM">—</div><div class="kpi-sub" id="kFMSub">—</div></div>
+  </div>
+
+  <!-- Equity + Doughnut -->
+  <div class="sec-label">Performance</div>
+  <div class="charts-main">
+    <div class="chart-card">
+      <div class="chart-head"><strong>Equity Curve</strong><span id="eqNote" style="font-size:0.62rem">cumulative closed P&L</span></div>
+      <div class="chart-wrap"><canvas id="eqChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head"><strong>Win / Loss</strong></div>
+      <div class="chart-wrap"><canvas id="wlChart"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-head"><strong>P&L Per Trade</strong></div>
+      <div class="chart-wrap"><canvas id="pnlBar"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head"><strong>Daily P&L</strong></div>
+      <div class="chart-wrap"><canvas id="dailyBar"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head"><strong>Trade Duration</strong></div>
+      <div class="chart-wrap"><canvas id="durBar"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Open Positions -->
+  <div class="sec-label">Open Positions</div>
+  <div class="pos-grid" id="posGrid">
+    <div class="pos-empty">Waiting for live data — connect Firebase above</div>
+  </div>
+
+  <!-- History Table -->
+  <div class="sec-label">Trade History</div>
+  <div class="table-card">
+    <div class="table-head-row">
+      <h3><strong>Closed Trades</strong> <span style="color:var(--muted);font-weight:400">(last 7 days)</span></h3>
+      <div class="ftabs">
+        <button class="ftab active" onclick="setFilter('all',this)">All</button>
+        <button class="ftab" onclick="setFilter('buy',this)">Buy</button>
+        <button class="ftab" onclick="setFilter('sell',this)">Sell</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Type</th><th>Close Time</th>
+          <th>Close Price</th><th>Lots</th><th>P&L</th><th>Status</th>
+        </tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>APEX LIVE &nbsp;·&nbsp; <span>XAUUSD M5</span> &nbsp;·&nbsp; EMA 9/21 Crossover</p>
+  <p>Powered by Firebase Firestore real-time sync</p>
+</footer>
+
+<script>
+// ── Firebase config (set via banner) ─────────────────────────────
+let PROJECT_ID = 'apex-bo';
+let API_KEY    = 'AIzaSyAlKDFYd6vGHrSg6AYWWtQKevkr1kZELdc';
+let POLL_MS    = 5000;
+let pollTimer  = null;
+let histFilter = 'all';
+let liveHistory = [];
+
+// ── Charts init ───────────────────────────────────────────────────
+Chart.defaults.color = '#4B5A6E';
+Chart.defaults.borderColor = '#1C2333';
+
+function mkLine(id) {
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: { labels: [], datasets: [{ data: [], borderColor: '#F0B429', borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: ctx => {
+      const {chartArea, ctx: c} = ctx.chart;
+      if(!chartArea) return 'transparent';
+      const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+      g.addColorStop(0, 'rgba(240,180,41,0.22)');
+      g.addColorStop(1, 'rgba(240,180,41,0)');
+      return g;
+    }}]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>' $'+c.raw.toFixed(2)}}}, scales:{ x:{grid:{color:'#1C2333'}, ticks:{maxTicksLimit:7, font:{family:'Space Mono',size:9}}}, y:{grid:{color:'#1C2333'}, ticks:{font:{family:'Space Mono',size:9}, callback:v=>'$'+v.toFixed(0)}} }}
+  });
+}
+function mkDonut(id) {
+  return new Chart(document.getElementById(id), {
+    type:'doughnut',
+    data:{ labels:['Wins','Losses'], datasets:[{data:[0,0], backgroundColor:['#22C55E','#EF4444'], borderWidth:0, hoverOffset:6}]},
+    options:{responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{position:'bottom', labels:{font:{family:'Space Mono',size:10}, padding:14, color:'#94A3B8'}}}}
+  });
+}
+function mkBar(id, colorFn) {
+  return new Chart(document.getElementById(id), {
+    type:'bar',
+    data:{ labels:[], datasets:[{data:[], borderRadius:3, borderWidth:0, backgroundColor: colorFn || '#F0B42980'}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false}, ticks:{font:{family:'Space Mono',size:9}}}, y:{grid:{color:'#1C2333'}, ticks:{font:{family:'Space Mono',size:9}, callback:v=>'$'+v}} }}
+  });
+}
+
+const eqChart   = mkLine('eqChart');
+const wlChart   = mkDonut('wlChart');
+const pnlBar    = mkBar('pnlBar');
+const dailyBar  = mkBar('dailyBar');
+const durBar    = new Chart(document.getElementById('durBar'), {
+  type:'bar',
+  data:{labels:['<30m','30-60m','1-2h','2-4h','>4h'], datasets:[{data:[0,0,0,0,0], backgroundColor:'rgba(56,189,248,0.5)', borderRadius:3, borderWidth:0}]},
+  options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false}, ticks:{font:{family:'Space Mono',size:9}}}, y:{grid:{color:'#1C2333'}, ticks:{font:{family:'Space Mono',size:9}, stepSize:1}} }}
+});
+
+// ── Connect ───────────────────────────────────────────────────────
+function connectFirebase() {
+  PROJECT_ID = document.getElementById('fbProjectId').value.trim();
+  API_KEY    = document.getElementById('fbApiKey').value.trim();
+  if(!PROJECT_ID || !API_KEY) {
+    document.getElementById('cfgStatus').textContent = '⚠️ Both fields required';
+    return;
+  }
+  localStorage.setItem('apex_pid', PROJECT_ID);
+  localStorage.setItem('apex_key', API_KEY);
+  document.getElementById('cfgStatus').textContent = '⏳ Connecting...';
+  startPolling();
+}
+
+function startPolling() {
+  if(pollTimer) clearInterval(pollTimer);
+  fetchAll();
+  pollTimer = setInterval(fetchAll, POLL_MS);
+}
+
+// ── Fetch from Firestore REST API ─────────────────────────────────
+async function fetchAll() {
+  const base = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/apex_bot`;
+  try {
+    const [account, positions, history] = await Promise.all([
+      firestoreGet(`${base}/account?key=${API_KEY}`),
+      firestoreList(`${base}/positions?key=${API_KEY}&pageSize=50`),
+      firestoreList(`${base}/history?key=${API_KEY}&pageSize=50`),
+    ]);
+    setConnected(true);
+    updateDashboard(account, positions, history);
+    document.getElementById('cfgStatus').textContent = '✅ Connected';
+  } catch(e) {
+    setConnected(false);
+    document.getElementById('cfgStatus').textContent = '❌ ' + e.message;
+  }
+}
+
+async function firestoreGet(url) {
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('Fetch error ' + r.status);
+  return r.json();
+}
+async function firestoreList(url) {
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('Fetch error ' + r.status);
+  const d = await r.json();
+  return d.documents || [];
+}
+
+function getField(doc, key) {
+  if(!doc || !doc.fields || !doc.fields[key]) return null;
+  const f = doc.fields[key];
+  return f.doubleValue ?? f.integerValue ?? f.stringValue ?? null;
+}
+
+// ── Update UI ─────────────────────────────────────────────────────
+function updateDashboard(account, positions, history) {
+  const bal   = +getField(account,'balance')    || 0;
+  const eq    = +getField(account,'equity')     || 0;
+  const fm    = +getField(account,'freeMargin') || 0;
+  const float = +getField(account,'floatingPnl')|| 0;
+  const sym   = getField(account,'symbol') || 'XAUUSD';
+
+  // KPIs - account
+  document.getElementById('kBal').textContent  = '$' + bal.toFixed(2);
+  document.getElementById('kEq').textContent   = '$' + eq.toFixed(2);
+  const eqDiff = eq - bal;
+  const eqSub  = document.getElementById('kEqSub');
+  eqSub.textContent = (eqDiff >= 0 ? '+' : '') + '$' + eqDiff.toFixed(2);
+  eqSub.className   = 'kpi-sub ' + (eqDiff >= 0 ? 'pos' : 'neg');
+
+  const floatEl = document.getElementById('kFloat');
+  floatEl.textContent = (float >= 0 ? '+' : '') + '$' + float.toFixed(2);
+  floatEl.className   = 'kpi-val ' + (float >= 0 ? 'pos' : 'neg');
+
+  document.getElementById('kFM').textContent  = '$' + fm.toFixed(2);
+  document.getElementById('kFMSub').textContent = ((fm/bal)*100).toFixed(1) + '% of balance';
+
+  // History stats
+  const closed = history.map(d => ({ type: getField(d,'type'), pnl: +getField(d,'pnl')||0, closeTime: getField(d,'closeTime'), lots: +getField(d,'lots')||0, closePrice: +getField(d,'closePrice')||0, ticket: getField(d,'ticket') }));
+  liveHistory = closed;
+  const wins   = closed.filter(t => t.pnl > 0);
+  const losses = closed.filter(t => t.pnl <= 0);
+  const netPnl = closed.reduce((s,t) => s + t.pnl, 0);
+  const gp     = wins.reduce((s,t) => s + t.pnl, 0);
+  const gl     = Math.abs(losses.reduce((s,t) => s + t.pnl, 0));
+  const pf     = gl > 0 ? gp/gl : gp > 0 ? 999 : 0;
+  const wr     = closed.length ? (wins.length / closed.length * 100) : 0;
+
+  const netEl = document.getElementById('kNetPnl');
+  netEl.textContent = (netPnl >= 0 ? '+' : '') + '$' + netPnl.toFixed(2);
+  netEl.className   = 'kpi-val ' + (netPnl >= 0 ? 'pos' : 'neg');
+  const pctEl = document.getElementById('kNetPct');
+  const pct   = bal > 0 ? (netPnl/bal*100) : 0;
+  pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+  pctEl.className   = 'kpi-sub ' + (pct >= 0 ? 'pos' : 'neg');
+
+  document.getElementById('kWR').textContent  = wr.toFixed(1) + '%';
+  document.getElementById('kWRSub').textContent = wins.length + 'W / ' + losses.length + 'L';
+  document.getElementById('kPF').textContent  = pf === 999 ? '∞' : pf.toFixed(2);
+
+  // Price ticker
+  const curPx = positions.length ? +getField(positions[0],'currentPrice') : null;
+  document.getElementById('priceTicker').innerHTML = sym + ' — <strong>' + (curPx ? curPx.toFixed(2) : '—') + '</strong>';
+
+  // Charts
+  const sortedClosed = [...closed].sort((a,b) => new Date(a.closeTime) - new Date(b.closeTime));
+  let cum = 0;
+  const eqPts = sortedClosed.map(t => { cum += t.pnl; return cum; });
+  eqChart.data.labels   = sortedClosed.map((_,i) => '#'+(i+1));
+  eqChart.data.datasets[0].data = eqPts;
+  eqChart.update();
+
+  wlChart.data.datasets[0].data = [wins.length, losses.length];
+  wlChart.update();
+
+  pnlBar.data.labels = sortedClosed.map((_,i) => '#'+(i+1));
+  pnlBar.data.datasets[0].data = sortedClosed.map(t => t.pnl);
+  pnlBar.data.datasets[0].backgroundColor = sortedClosed.map(t => t.pnl >= 0 ? 'rgba(34,197,94,0.65)' : 'rgba(239,68,68,0.65)');
+  pnlBar.update();
+
+  const dayMap = {};
+  sortedClosed.forEach(t => {
+    if(!t.closeTime) return;
+    const d = t.closeTime.split(' ')[0];
+    dayMap[d] = (dayMap[d]||0) + t.pnl;
+  });
+  const days = Object.keys(dayMap).sort();
+  dailyBar.data.labels = days.map(d => d.slice(5));
+  dailyBar.data.datasets[0].data = days.map(d => dayMap[d]);
+  dailyBar.data.datasets[0].backgroundColor = days.map(d => dayMap[d] >= 0 ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)');
+  dailyBar.update();
+
+  durBar.data.datasets[0].data = [0,0,0,0,0];
+  durBar.update();
+
+  // Open positions cards
+  renderPositions(positions);
+  // History table
+  renderHistory(liveHistory);
+
+  document.getElementById('lastSyncEl').textContent = 'Synced: ' + new Date().toLocaleTimeString();
+}
+
+// ── Positions ─────────────────────────────────────────────────────
+function renderPositions(positions) {
+  const grid = document.getElementById('posGrid');
+  if(!positions.length) {
+    grid.innerHTML = '<div class="pos-empty">No open positions right now.</div>';
+    return;
+  }
+  grid.innerHTML = positions.map(d => {
+    const type    = getField(d,'type')         || 'buy';
+    const pnl     = +getField(d,'pnl')         || 0;
+    const openPx  = +getField(d,'openPrice')   || 0;
+    const curPx   = +getField(d,'currentPrice')|| 0;
+    const sl      = +getField(d,'sl')          || 0;
+    const tp      = +getField(d,'tp')          || 0;
+    const lots    = +getField(d,'lots')        || 0;
+    const time    = getField(d,'openTime')     || '—';
+    const ticket  = getField(d,'ticket')       || '—';
+    const pnlCls  = pnl >= 0 ? 'ppos' : 'pneg';
+    // progress bar: how far from SL to TP
+    let barPct = 0;
+    if(tp && sl) {
+      const range = Math.abs(tp - sl);
+      const moved = type === 'buy' ? curPx - openPx : openPx - curPx;
+      barPct = Math.min(100, Math.max(0, (moved / range) * 100));
+    }
+    return `<div class="pos-card ${type}-card">
+      <span class="pos-type ${type}">${type.toUpperCase()}</span>
+      <div class="pos-pnl ${pnlCls}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</div>
+      <div class="pos-row"><span>Open</span> ${openPx.toFixed(2)}</div>
+      <div class="pos-row"><span>Current</span> ${curPx.toFixed(2)}</div>
+      <div class="pos-row"><span>SL / TP</span> ${sl.toFixed(2)} / ${tp.toFixed(2)}</div>
+      <div class="pos-row"><span>Lots</span> ${lots.toFixed(2)} &nbsp;|&nbsp; <span>#</span>${ticket}</div>
+      <div class="pos-row"><span>Opened</span> ${time}</div>
+      <div class="pos-bar-wrap"><div class="pos-bar ${pnl>=0?'pos':'neg'}" style="width:${barPct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── History table ─────────────────────────────────────────────────
+function setFilter(f, btn) {
+  histFilter = f;
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistory(liveHistory);
+}
+function renderHistory(trades) {
+  const filtered = trades.filter(t => histFilter === 'all' || t.type === histFilter);
+  const body = document.getElementById('histBody');
+  if(!filtered.length) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px">No trades yet — waiting for MT5 data.</td></tr>';
+    return;
+  }
+  const sorted = [...filtered].sort((a,b) => new Date(b.closeTime) - new Date(a.closeTime));
+  body.innerHTML = sorted.map((t,i) => `<tr>
+    <td style="color:var(--muted)">${i+1}</td>
+    <td><span class="badge ${t.type}">${t.type.toUpperCase()}</span></td>
+    <td>${t.closeTime || '—'}</td>
+    <td>${t.closePrice ? t.closePrice.toFixed(2) : '—'}</td>
+    <td>${t.lots ? t.lots.toFixed(2) : '—'}</td>
+    <td class="${t.pnl >= 0 ? 'ppos' : 'pneg'}">${(t.pnl>=0?'+':'') + '$' + t.pnl.toFixed(2)}</td>
+    <td><span class="badge open" style="background:rgba(100,116,139,0.15);color:var(--muted)">CLOSED</span></td>
+  </tr>`).join('');
+}
+
+// ── Connection status ─────────────────────────────────────────────
+function setConnected(ok) {
+  const dot   = document.getElementById('connDot');
+  const label = document.getElementById('connLabel');
+  dot.className   = 'conn-dot ' + (ok ? 'live' : 'error');
+  label.textContent = ok ? 'LIVE' : 'ERROR';
+  label.style.color = ok ? 'var(--green)' : 'var(--red)';
+}
+
+// ── Auto-restore saved credentials ───────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('cfgStatus').textContent = '⏳ Connecting to Firebase...';
+  startPolling();
+});
+</script>
+</body>
+</html>
