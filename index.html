@@ -539,7 +539,7 @@ function setConnected(ok) {
   label.style.color = ok ? 'var(--green)' : 'var(--red)';
 }
 
-// ── Auto-restore saved credentials ───────────────────────────────
+// ── Auto-restore saved credentials   test───────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('cfgStatus').textContent = '⏳ Connecting to Firebase...';
   startPolling();
